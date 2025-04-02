@@ -21,14 +21,5 @@ public class MeetingInfo {
     /**
      * 会议人员
      */
-    private Set<User> users;
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class User {
-        private String userId;
-
-        private String username;
-    }
+    private Set<UserInfo> users;
 }

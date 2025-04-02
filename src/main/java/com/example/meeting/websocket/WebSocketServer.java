@@ -1,11 +1,11 @@
 package com.example.meeting.websocket;
 
 import static com.example.meeting.model.entity.OnlineInfo.meetingMap;
+import static com.example.meeting.model.entity.OnlineInfo.sessionMap;
 import static com.example.meeting.model.entity.OnlineInfo.userMap;
 
 import com.example.meeting.model.entity.EventData;
 import com.example.meeting.model.entity.MeetingInfo;
-import com.example.meeting.model.entity.MeetingInfo.User;
 import com.example.meeting.model.entity.UserInfo;
 import com.example.meeting.utils.JsonUtils;
 import com.google.gson.JsonSyntaxException;
@@ -34,28 +34,28 @@ public class WebSocketServer {
     /**
      * 连接的用户id
      */
-    private Long userId;
+    private String userId;
 
     /**
      * 用户上线
      *
      * @param session
-     * @param userIdStr
+     * @param userId
      */
     @OnOpen
-    public void onOpen(Session session, @PathParam("userId") String userIdStr, @PathParam("username") String username) {
+    public void onOpen(Session session, @PathParam("userId") String userId, @PathParam("username") String username) {
         // 1. 获取用户信息
-        this.userId = Long.parseLong(userIdStr);
-
+        this.userId = userId;
         UserInfo userInfo = userMap.get(userId);
 
         // 2. 这里重复的情况先不处理
         if (Objects.isNull(userInfo)) {
-            userInfo = new UserInfo(userId, username, session);
+            userInfo = new UserInfo(userId, username, null);
         }
 
         // 3. 加入在线列表
-        userMap.put(userIdStr, userInfo);
+        userMap.put(userId, userInfo);
+        sessionMap.put(userId, session);
 
         log.info(userId + "-->onOpen......");
     }
@@ -68,9 +68,22 @@ public class WebSocketServer {
         log.info(userId + "-->onClose......");
         UserInfo userInfo = userMap.get(userId);
         if (Objects.nonNull(userInfo)) {
-            userMap.remove(userId.toString());
+            // 1. 从在线列表中移除
+            userMap.remove(userId);
+
+            // 2. 从会议列表中移除
+            MeetingInfo meetingInfo = meetingMap.get(userInfo.getMeetingId());
+            if (Objects.nonNull(meetingInfo)) {
+                meetingInfo.getUsers().remove(userInfo);
+                if (meetingInfo.getUsers().isEmpty()) {
+                    meetingMap.remove(userInfo.getMeetingId());
+                    log.info("meeting {} cleared due to no user in meeting", userInfo.getMeetingId());
+                }
+            }
+
+            // 3. 关闭session
             try {
-                userInfo.getSession().close();
+                sessionMap.get(userId).close();
             } catch (IOException e) {
                 log.error("error when close session with userId: " + userId, e);
             }
@@ -154,7 +167,8 @@ public class WebSocketServer {
         MeetingInfo meetingInfo = meetingMap.get(meetingId);
         if (Objects.nonNull(meetingInfo)) {
             // 加入房间
-            meetingInfo.getUsers().add(new User(userId, userInfo.getUsername()));
+            meetingInfo.getUsers().add(userInfo);
+            userInfo.setMeetingId(meetingId);
 
             // 组装房间信息
             EventData send = new EventData();
@@ -239,11 +253,11 @@ public class WebSocketServer {
         EventData send = new EventData();
         send.setEventName("CHAT_MESSAGE");
         send.setData(data);
-        for (User user : meetingMap.get(meetingId).getUsers()) {
-            if (!user.getUserId().equals(userId)) {
-                sendMessage(user.getUserId(), send);
-            }
-        }
+
+        // 发送给房间中的其他用户
+        meetingMap.get(meetingId).getUsers().stream().filter(u -> !u.getUserId().equals(userId)).forEach(u -> {
+            sendMessage(u.getUserId(), send);
+        });
     }
 
     /**
@@ -256,7 +270,7 @@ public class WebSocketServer {
         UserInfo userInfo = userMap.get(userId);
         if (Objects.nonNull(userInfo)) {
             try {
-                userInfo.getSession().getBasicRemote().sendText(JsonUtils.getInstance().toJson(data));
+                sessionMap.get(userId).getBasicRemote().sendText(JsonUtils.getInstance().toJson(data));
                 log.info("send data to userId: " + userId + " msg: " + data);
             } catch (IOException e) {
                 log.error("error when send message to userId: {} msg: {}", userId, data, e);

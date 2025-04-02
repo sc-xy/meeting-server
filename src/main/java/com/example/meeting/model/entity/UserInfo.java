@@ -2,22 +2,25 @@ package com.example.meeting.model.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import javax.websocket.Session;
+import lombok.Setter;
 
 /**
  * @author sc-xy
  * @time 2025/3/30
  */
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserInfo {
     /**
      * 用户id
      */
-    private Long userId;
+    private String userId;
 
     /**
      * 用户名
@@ -25,7 +28,7 @@ public class UserInfo {
     private String username;
 
     /**
-     * 会话描述信息
+     * 会议号
      */
-    private Session session;
+    private String meetingId;
 }

@@ -8,5 +8,9 @@ import lombok.Data;
  */
 @Data
 public class CreateMeetingRequest {
-    
+
+    /**
+     * 用户id
+     */
+    private Long userid;
 }

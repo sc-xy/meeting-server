@@ -20,6 +20,11 @@ public class UserInfo {
     private Long userId;
 
     /**
+     * 用户名
+     */
+    private String username;
+
+    /**
      * 会话描述信息
      */
     private Session session;

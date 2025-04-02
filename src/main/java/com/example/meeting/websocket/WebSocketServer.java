@@ -116,6 +116,10 @@ public class WebSocketServer {
                 handleAnswer(data.getData());
                 break;
             }
+            case "ICE_CANDIDATE": {
+                handleIceCandidate(data.getData());
+                break;
+            }
             default:
                 break;
         }
@@ -194,6 +198,23 @@ public class WebSocketServer {
 
         EventData send = new EventData();
         send.setEventName("ANSWER");
+        send.setData(data);
+        sendMessage(targetUserId, send);
+    }
+
+    /**
+     * 处理iceCandidate消息
+     *
+     * @param data
+     */
+    public void handleIceCandidate(Map<String, Object> data) {
+        String userId = data.get("userId").toString();
+        String targetUserId = data.get("targetUserId").toString();
+
+        log.info("iceCandidate userId: " + userId + " targetUserId: " + targetUserId + " data: " + data);
+
+        EventData send = new EventData();
+        send.setEventName("ICE_CANDIDATE");
         send.setData(data);
         sendMessage(targetUserId, send);
     }

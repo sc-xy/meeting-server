@@ -120,6 +120,10 @@ public class WebSocketServer {
                 handleIceCandidate(data.getData());
                 break;
             }
+            case "CHAT_MESSAGE": {
+                handleChatMessage(data.getData());
+                break;
+            }
             default:
                 break;
         }
@@ -174,7 +178,7 @@ public class WebSocketServer {
         String userId = data.get("userId").toString();
         String targetUserId = data.get("targetUserId").toString();
 
-        log.info("offer userId: " + userId + " targetUserId: " + targetUserId + " data: " + data);
+        log.info("offer userId: {} targetUserId: {} data: {}", userId, targetUserId, data);
 
         UserInfo user = userMap.get(userId);
         data.put("username", user.getUsername());
@@ -194,7 +198,7 @@ public class WebSocketServer {
         String userId = data.get("userId").toString();
         String targetUserId = data.get("targetUserId").toString();
 
-        log.info("answer userId: " + userId + " targetUserId: " + targetUserId + " data: " + data);
+        log.info("answer userId: {} targetUserId: {} data: {}", userId, targetUserId, data);
 
         EventData send = new EventData();
         send.setEventName("ANSWER");
@@ -211,7 +215,7 @@ public class WebSocketServer {
         String userId = data.get("userId").toString();
         String targetUserId = data.get("targetUserId").toString();
 
-        log.info("iceCandidate userId: " + userId + " targetUserId: " + targetUserId + " data: " + data);
+        log.info("iceCandidate userId: {} targetUserId: {} data: {}", userId, targetUserId, data);
 
         EventData send = new EventData();
         send.setEventName("ICE_CANDIDATE");
@@ -219,6 +223,28 @@ public class WebSocketServer {
         sendMessage(targetUserId, send);
     }
 
+    /**
+     * 处理聊天消息
+     *
+     * @param data
+     */
+    private void handleChatMessage(Map<String, Object> data) {
+        String userId = data.get("userId").toString();
+        String username = data.get("username").toString();
+        String meetingId = data.get("meetingId").toString();
+        String message = data.get("message").toString();
+
+        log.info("chat message userId: {} meetingId: {} message: {}", userId, meetingId, message);
+
+        EventData send = new EventData();
+        send.setEventName("CHAT_MESSAGE");
+        send.setData(data);
+        for (User user : meetingMap.get(meetingId).getUsers()) {
+            if (!user.getUserId().equals(userId)) {
+                sendMessage(user.getUserId(), send);
+            }
+        }
+    }
 
     /**
      * 发送消息给指定用户
